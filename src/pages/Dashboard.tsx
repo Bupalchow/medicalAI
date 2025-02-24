@@ -117,26 +117,24 @@ const Dashboard = () => {
   };
 
 // Add this effect at the top of your Dashboard component
+// Add this useEffect right after the existing useEffect for index creation
 useEffect(() => {
-  const createFirestoreIndexes = async () => {
-    if (!currentUser) return;
-    try {
-      // Test query to trigger index creation
-      const reportsRef = collection(db, 'reports');
-      const testQuery = query(
-        reportsRef,
-        where('userId', '==', currentUser.uid),
-        orderBy('date', 'desc')
-      );
-      await getDocs(testQuery);
-    } catch (e) {
-      console.log("Index will be created automatically ",e);
+  const loadInitialReports = async () => {
+    if (currentUser) {
+      try {
+        setLoading(true);
+        await loadReports();
+      } catch (err) {
+        console.error('Error loading initial reports:', err);
+        setError('Failed to load your reports');
+      } finally {
+        setLoading(false);
+      }
     }
   };
 
-  createFirestoreIndexes();
-}, [currentUser]);
-
+  loadInitialReports();
+}, [currentUser]); // Add this effect to run when currentUser changes
   const loadReports = async () => {
     if (!currentUser) return;
 
