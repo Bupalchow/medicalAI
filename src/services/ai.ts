@@ -62,7 +62,7 @@ export const generateDietPlan = async (reportSummary: string) => {
   const prompt = `Based on this medical report, create a simple, practical diet plan that's easy to follow:
   ${reportSummary}
 
-  Structure the response as follows:
+  Structure the response as follows make sure u provide everything mandatorily:
 
   🎯 Your Goals:
   • Simple, achievable dietary goals in everyday language
