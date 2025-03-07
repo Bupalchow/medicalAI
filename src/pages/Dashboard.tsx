@@ -1,12 +1,13 @@
-// Update the imports at the top
+
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
 import { db } from '../config/firebase';
 import { collection, query, where, getDocs, addDoc, orderBy, limit } from 'firebase/firestore';
 import { generateReportSummary, compareSummaries, generateDietPlan } from '../services/ai';
-import { LogOut, Upload, FileText, Utensils, PlusCircle } from 'lucide-react';
+import { Upload, FileText, PlusCircle } from 'lucide-react';
 import * as pdfjs from 'pdfjs-dist';
+import Navbar from '../components/Navbar';
 
 // Import the worker directly
 import pdfjsWorker from 'pdfjs-dist/build/pdf.worker.min?url'
@@ -29,69 +30,8 @@ const Dashboard = () => {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
-  const { currentUser, logout } = useAuth();
+  const { currentUser } = useAuth();
   const navigate = useNavigate();
-
-  const formatDietPlan = (dietPlan: string) => {
-    const sections = dietPlan.split('\n\n');
-    const formattedSections: { [key: string]: string[] } = {
-      goals: [],
-      greenFoods: [],
-      yellowFoods: [],
-      redFoods: [],
-      timing: [],
-      special: []
-    };
-  
-    let currentSection = 'goals';
-    sections.forEach(section => {
-      // Clean up the section text and remove markdown
-      const cleanSection = section
-        .replace(/\*\*/g, '')
-        .replace(/^[-*]\s+/gm, '')
-        .trim();
-  
-      if (section.toLowerCase().includes('foods to eat freely') || 
-          section.toLowerCase().includes('green foods')) {
-        currentSection = 'greenFoods';
-      } else if (section.toLowerCase().includes('foods in moderation') || 
-                 section.toLowerCase().includes('yellow foods')) {
-        currentSection = 'yellowFoods';
-      } else if (section.toLowerCase().includes('foods to avoid') || 
-                 section.toLowerCase().includes('red foods')) {
-        currentSection = 'redFoods';
-      } else if (section.toLowerCase().includes('meal timing')) {
-        currentSection = 'timing';
-      } else if (section.toLowerCase().includes('special instructions') || 
-                 section.toLowerCase().includes('special dietary')) {
-        currentSection = 'special';
-      } else if (cleanSection) {
-        // Split section into individual items if it contains bullet points
-        const items = cleanSection.split('\n')
-          .map(item => item.trim())
-          .filter(item => item.length > 0);
-  
-        // Add items to current section
-        formattedSections[currentSection].push(...items);
-      }
-    });
-  
-    // Clean up and format each section's items
-    Object.keys(formattedSections).forEach(key => {
-      formattedSections[key] = formattedSections[key]
-        .map(item => {
-          return item
-            .replace(/^[-*•]\s*/, '') // Remove bullet points
-            .replace(/\*\*/g, '')     // Remove bold markdown
-            .replace(/^\d+\.\s*/, '') // Remove numbered lists
-            .trim();
-        })
-        .filter(item => item.length > 0); // Remove empty items
-    });
-  
-    return formattedSections;
-  };
-
 
   const formatMarkdown = (text: string) => {
     return text.split('\n').map((line, index) => {
@@ -116,25 +56,49 @@ const Dashboard = () => {
     });
   };
 
-// Add this effect at the top of your Dashboard component
-// Add this useEffect right after the existing useEffect for index creation
-useEffect(() => {
-  const loadInitialReports = async () => {
-    if (currentUser) {
+  // Add this effect for index creation
+  useEffect(() => {
+    const ensureIndexExists = async () => {
+      if (!currentUser) return;
+      
       try {
-        setLoading(true);
-        await loadReports();
-      } catch (err) {
-        console.error('Error loading initial reports:', err);
-        setError('Failed to load your reports');
-      } finally {
-        setLoading(false);
+        const reportsRef = collection(db, 'reports');
+        const testQuery = query(
+          reportsRef,
+          where('userId', '==', currentUser.uid),
+          orderBy('date', 'desc')
+        );
+        await getDocs(testQuery);
+      } catch (indexError: unknown) {
+        if (indexError instanceof Error && indexError.message.includes('indexes?create_composite')) {
+          console.log('Index needs to be created. Please wait...');
+          setError('Setting up database indexes. This may take a few moments...');
+        }
       }
-    }
-  };
+    };
 
-  loadInitialReports();
-}, [currentUser]); // Add this effect to run when currentUser changes
+    ensureIndexExists();
+  }, [currentUser]);
+
+  // Add this effect to load reports
+  useEffect(() => {
+    const loadInitialReports = async () => {
+      if (currentUser) {
+        try {
+          setLoading(true);
+          await loadReports();
+        } catch (err) {
+          console.error('Error loading initial reports:', err);
+          setError('Failed to load your reports');
+        } finally {
+          setLoading(false);
+        }
+      }
+    };
+
+    loadInitialReports();
+  }, [currentUser]);
+  
   const loadReports = async () => {
     if (!currentUser) return;
 
@@ -229,7 +193,6 @@ useEffect(() => {
         }
       } catch (dietError) {
         console.error('Error generating diet plan:', dietError);
-        // Continue without diet plan if it fails
       }
   
       // Add to Firestore
@@ -246,34 +209,10 @@ useEffect(() => {
       setLoading(false);
     }
   };
-  const handleLogout = async () => {
-    try {
-      await logout();
-      navigate('/login');
-    } catch (err) {
-      setError('Failed to log out '+err);
-    }
-  };
 
   return (
     <div className="min-h-screen bg-gray-50">
-      <nav className="bg-white shadow-sm">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="flex justify-between h-16">
-            <div className="flex items-center">
-              <FileText className="h-8 w-8 text-indigo-600" />
-              <span className="ml-2 text-xl font-semibold text-gray-900">Medical AI Assistant</span>
-            </div>
-            <button
-              onClick={handleLogout}
-              className="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md text-gray-700 bg-gray-50 hover:bg-gray-100"
-            >
-              <LogOut className="h-4 w-4 mr-2" />
-              Logout
-            </button>
-          </div>
-        </div>
-      </nav>
+      <Navbar />
   
       <main className="max-w-7xl mx-auto py-6 sm:px-6 lg:px-8">
         {error && (
@@ -310,7 +249,12 @@ useEffect(() => {
   
         <div className="bg-white shadow rounded-lg p-6">
           <h2 className="text-lg font-medium text-gray-900 mb-4">Your Reports</h2>
-          {reports.length === 0 ? (
+          {loading ? (
+            <div className="text-center py-12">
+              <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-indigo-600 mx-auto"></div>
+              <p className="mt-4 text-sm text-gray-500">Loading your reports...</p>
+            </div>
+          ) : reports.length === 0 ? (
             <div className="text-center py-12">
               <PlusCircle className="mx-auto h-12 w-12 text-gray-400" />
               <h3 className="mt-2 text-sm font-medium text-gray-900">No reports</h3>
@@ -350,96 +294,18 @@ useEffect(() => {
                         </div>
                       </div>
                     )}
-  
-                    {/* Diet Plan Section */}
-                    {report.dietPlan && (() => {
-                      const diet = formatDietPlan(report.dietPlan);
-                      return (
-                        <div className="bg-white rounded-lg p-6 shadow-sm">
-                          <h4 className="flex items-center text-lg font-semibold text-gray-900 mb-6">
-                            <Utensils className="h-5 w-5 mr-2 text-green-600" />
-                            Recommended Diet Plan
-                          </h4>
-  
-                          <div className="space-y-6">
-                            {/* Dietary Goals */}
-                            <div className="bg-gradient-to-r from-blue-50 to-blue-100 rounded-lg p-4">
-                              <h5 className="text-md font-semibold text-blue-900 mb-3">Dietary Goals</h5>
-                              <ul className="list-disc list-inside text-blue-800 space-y-2">
-                                {diet.goals.map((goal, idx) => (
-                                  <li key={idx} className="text-sm">{goal}</li>
-                                ))}
-                              </ul>
-                            </div>
-  
-                            {/* Food Categories Grid */}
-                            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                              {/* Green Foods */}
-                              <div className="bg-green-50 rounded-lg p-4">
-                                <h5 className="text-md font-semibold text-green-800 mb-3">
-                                  Foods to Eat Freely
-                                </h5>
-                                <ul className="list-disc list-inside text-green-700 space-y-2">
-                                  {diet.greenFoods.map((food, idx) => (
-                                    <li key={idx} className="text-sm">{food.replace('- ', '')}</li>
-                                  ))}
-                                </ul>
-                              </div>
-  
-                              {/* Yellow Foods */}
-                              <div className="bg-yellow-50 rounded-lg p-4">
-                                <h5 className="text-md font-semibold text-yellow-800 mb-3">
-                                  Foods in Moderation
-                                </h5>
-                                <ul className="list-disc list-inside text-yellow-700 space-y-2">
-                                  {diet.yellowFoods.map((food, idx) => (
-                                    <li key={idx} className="text-sm">{food.replace('- ', '')}</li>
-                                  ))}
-                                </ul>
-                              </div>
-  
-                              {/* Red Foods */}
-                              <div className="bg-red-50 rounded-lg p-4">
-                                <h5 className="text-md font-semibold text-red-800 mb-3">
-                                  Foods to Avoid
-                                </h5>
-                                <ul className="list-disc list-inside text-red-700 space-y-2">
-                                  {diet.redFoods.map((food, idx) => (
-                                    <li key={idx} className="text-sm">{food.replace('- ', '')}</li>
-                                  ))}
-                                </ul>
-                              </div>
-                            </div>
-  
-                            {/* Meal Timing */}
-                            <div className="bg-purple-50 rounded-lg p-4">
-                              <h5 className="text-md font-semibold text-purple-900 mb-3">
-                                Meal Timing Recommendations
-                              </h5>
-                              <ul className="list-disc list-inside text-purple-800 space-y-2">
-                                {diet.timing.map((timing, idx) => (
-                                  <li key={idx} className="text-sm">{timing.replace('- ', '')}</li>
-                                ))}
-                              </ul>
-                            </div>
-  
-                            {/* Special Instructions */}
-                            {diet.special.length > 0 && (
-                              <div className="bg-gray-50 rounded-lg p-4">
-                                <h5 className="text-md font-semibold text-gray-900 mb-3">
-                                  Special Instructions
-                                </h5>
-                                <ul className="list-disc list-inside text-gray-800 space-y-2">
-                                  {diet.special.map((instruction, idx) => (
-                                    <li key={idx} className="text-sm">{instruction.replace('- ', '')}</li>
-                                  ))}
-                                </ul>
-                              </div>
-                            )}
-                          </div>
-                        </div>
-                      );
-                    })()}
+                    
+                    {/* Button to view diet plan if available */}
+                    {report.dietPlan && (
+                      <div className="flex justify-end">
+                        <button
+                          onClick={() => navigate('/diet-plan')}
+                          className="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md shadow-sm text-white bg-green-600 hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-green-500"
+                        >
+                          View Diet Plan
+                        </button>
+                      </div>
+                    )}
                   </div>
                 </div>
               ))}

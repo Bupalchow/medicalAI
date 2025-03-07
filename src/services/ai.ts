@@ -3,7 +3,7 @@ import { GoogleGenerativeAI } from '@google/generative-ai';
 const genAI = new GoogleGenerativeAI(import.meta.env.VITE_GEMINI_API_KEY);
 
 export const generateReportSummary = async (reportText: string) => {
-  const model = genAI.getGenerativeModel({ model: "gemini-pro" });
+  const model = genAI.getGenerativeModel({ model: "gemini-1.5-flash" });
   
   const prompt = `Analyze this medical report and provide a simple, easy-to-understand summary for a patient:
   ${reportText}
@@ -28,7 +28,7 @@ export const generateReportSummary = async (reportText: string) => {
 };
 
 export const compareSummaries = async (oldSummary: string, newSummary: string) => {
-  const model = genAI.getGenerativeModel({ model: "gemini-pro" });
+  const model = genAI.getGenerativeModel({ model: "gemini-1.5-flash" });
   
   const prompt = `Compare these two medical reports in simple, everyday language that a patient can understand:
   
@@ -57,7 +57,7 @@ export const compareSummaries = async (oldSummary: string, newSummary: string) =
 };
 
 export const generateDietPlan = async (reportSummary: string) => {
-  const model = genAI.getGenerativeModel({ model: "gemini-pro" });
+  const model = genAI.getGenerativeModel({ model: "gemini-1.5-flash" });
   
   const prompt = `Based on this medical report, create a simple, practical diet plan that's easy to follow:
   ${reportSummary}
@@ -104,3 +104,5 @@ export const generateDietPlan = async (reportSummary: string) => {
   const response = await result.response;
   return response.text();
 };
+
+
