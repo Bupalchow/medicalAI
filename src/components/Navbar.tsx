@@ -1,7 +1,7 @@
 import React from 'react';
 import { Link, useLocation } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
-import { LogOut, FileText, Utensils, Home } from 'lucide-react';
+import { LogOut, FileText, Utensils, Home, MessageSquare } from 'lucide-react';
 
 interface NavLinkProps {
   to: string;
@@ -50,6 +50,12 @@ const Navbar = () => {
                 icon={Utensils} 
                 label="Diet Plan" 
                 active={location.pathname === '/diet-plan'} 
+              />
+              <NavLink 
+                to="/chat" 
+                icon={MessageSquare} 
+                label="Chat" 
+                active={location.pathname === '/chat'} 
               />
               <div className="h-8 border-l border-gray-200 mx-2"></div>
               <button

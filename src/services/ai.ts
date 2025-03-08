@@ -105,4 +105,33 @@ export const generateDietPlan = async (reportSummary: string) => {
   return response.text();
 };
 
+export const askQuestionWithContext = async (question: string, reportContext: string) => {
+  const model = genAI.getGenerativeModel({ model: "gemini-1.5-flash" });
+  
+  const prompt = `You are a helpful medical assistant that explains medical reports in plain language.
+  
+  Here's the patient's medical report summary:
+  ${reportContext}
+  
+  The patient asks: "${question}"
+  
+  Provide a clear, accurate answer based on the report. Guidelines:
+  - Be compassionate and reassuring
+  - Use simple, non-technical language
+  - Explain medical terms when you need to use them
+  - Be honest about what the report does or doesn't indicate
+  - Only reference information that's in the report
+  - If the question asks for medical advice beyond explaining the report, remind the patient to consult with their doctor
+  - Keep your answer concise and focused on the patient's question`;
+
+  try {
+    const result = await model.generateContent(prompt);
+    const response = await result.response;
+    return response.text();
+  } catch (error) {
+    console.error("Error generating AI response:", error);
+    throw new Error("Failed to generate response");
+  }
+};
+
 
