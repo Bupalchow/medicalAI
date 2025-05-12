@@ -19,7 +19,7 @@ const Login = () => {
       await login(email, password);
       navigate('/');
     } catch (err) {
-      setError('Failed to sign in. Please check your credentials.');
+      setError('Failed to sign in. Please check your credentials.:'+err);
     } finally {
       setLoading(false);
     }

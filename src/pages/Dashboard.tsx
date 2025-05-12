@@ -57,28 +57,28 @@ const Dashboard = () => {
   };
 
   // Add this effect for index creation
-  useEffect(() => {
-    const ensureIndexExists = async () => {
-      if (!currentUser) return;
+  // useEffect(() => {
+  //   const ensureIndexExists = async () => {
+  //     if (!currentUser) return;
       
-      try {
-        const reportsRef = collection(db, 'reports');
-        const testQuery = query(
-          reportsRef,
-          where('userId', '==', currentUser.uid),
-          orderBy('date', 'desc')
-        );
-        await getDocs(testQuery);
-      } catch (indexError: unknown) {
-        if (indexError instanceof Error && indexError.message.includes('indexes?create_composite')) {
-          console.log('Index needs to be created. Please wait...');
-          setError('Setting up database indexes. This may take a few moments...');
-        }
-      }
-    };
+  //     try {
+  //       const reportsRef = collection(db, 'reports');
+  //       const testQuery = query(
+  //         reportsRef,
+  //         where('userId', '==', currentUser.uid),
+  //         orderBy('date', 'desc')
+  //       );
+  //       await getDocs(testQuery);
+  //     } catch (indexError: unknown) {
+  //       if (indexError instanceof Error && indexError.message.includes('indexes?create_composite')) {
+  //         console.log('Index needs to be created. Please wait...');
+  //         setError('Setting up database indexes. This may take a few moments...');
+  //       }
+  //     }
+  //   };
 
-    ensureIndexExists();
-  }, [currentUser]);
+  //   ensureIndexExists();
+  // }, [currentUser]);
 
   // Add this effect to load reports
   useEffect(() => {
